@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 
-URL = "https://egy.voxcinemas.com/showtimes?c=city-centre-almaza"
+URL = "https://cfc.scenecinemas.com/home"
 TOKEN = os.environ["TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 FILE = "seen.json"
@@ -21,11 +21,11 @@ for a in soup.select('a[href*="/movie-details/"]'):
         movies[a["href"]] = name
 
 
-print("Found", len(movies), "a movie")
+print("لقيت", len(movies), "فيلم")
 
 
 if not movies:
-    sys.exit("no movies")
+    sys.exit("مفيش أفلام اتقرأت")
 
 
 seen = set(json.load(open(FILE))) if os.path.exists(FILE) else None
@@ -36,7 +36,7 @@ if seen is not None:
         requests.get(
             f"https://api.telegram.org/bot{TOKEN}/sendMessage",
             params={"chat_id": CHAT_ID,
-                     "text": f"New Movie: {movies[href]}\n{urljoin(URL,
+                     "text": f"فيلم جديد نزل: {movies[href]}\n{urljoin(URL,
 href)}"},
         )
 

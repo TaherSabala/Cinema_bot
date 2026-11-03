@@ -19,38 +19,48 @@ retry = Retry(
 
 session.mount("https://", HTTPAdapter(max_retries=retry))
 
-reader_url = "https://r.jina.ai/" + URL
-
 response = session.get(
-    reader_url,
+    "https://r.jina.ai/" + URL,
     timeout=(15, 120),
-    headers={
-        "X-Respond-With": "markdown",
-        "X-Timeout": "90"
-    }
+    headers={"X-Respond-With": "markdown"}
 )
 
 response.raise_for_status()
-
 content = response.text
 
-# Extract movie titles from page headings
+# Extract movie titles using their metadata
+lines = content.splitlines()
 movies = {}
 
-for line in content.splitlines():
-    match = re.match(r"^##\s+(.+?)\s*$", line)
+for i, line in enumerate(lines):
+    heading = re.match(r"^#{2,6}\s+(.+?)\s*$", line)
 
-    if match:
-        name = match.group(1).strip()
+    if not heading:
+        continue
 
-        if name not in ["View Times and Book", "Image"]:
-            name = re.sub(r"\*\*", "", name)
-            movies[name] = name
+    name = heading.group(1).strip()
+
+    # Look for the movie information immediately below
+    next_line = ""
+    for following in lines[i + 1:]:
+        if following.strip():
+            next_line = following.strip()
+            break
+
+    if re.search(
+        r"^(G|PG|PG-13|R|12\+|16\+|18\+|18TC)\s+.*\d+\s*min\b",
+        next_line,
+        re.IGNORECASE
+    ):
+        movies[name] = name
 
 print("Found", len(movies), "movies")
 
 if not movies:
-    sys.exit("No movies found. Check the website response.")
+    print("Could not identify movie titles.")
+    print("Website response preview:")
+    print(content[:3000])
+    sys.exit("Movie extraction failed")
 
 # Load previously seen movies
 seen = set(json.load(open(FILE))) if os.path.exists(FILE) else None
@@ -58,10 +68,8 @@ seen = set(json.load(open(FILE))) if os.path.exists(FILE) else None
 # Notify only about newly appearing movies
 if seen is not None:
     for name in sorted(set(movies) - seen):
-        telegram_url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-
         result = requests.get(
-            telegram_url,
+            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
             params={
                 "chat_id": CHAT_ID,
                 "text": f"New movie at VOX City Centre Almaza: {name}\n{URL}"
@@ -78,6 +86,10 @@ if seen is not None:
 
 # Save current movie list
 with open(FILE, "w") as f:
-    json.dump(sorted((seen or set()) | set(movies)), f, ensure_ascii=False)
+    json.dump(
+        sorted((seen or set()) | set(movies)),
+        f,
+        ensure_ascii=False
+    )
 
 print("Movie database updated successfully")

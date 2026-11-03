@@ -9,8 +9,28 @@ CHAT_ID = os.environ["CHAT_ID"]
 FILE = "seen.json"
 
 
-html = requests.get(URL, timeout=20, headers={"User-Agent":
-"Mozilla/5.0"}).text
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+session = requests.Session()
+
+retry = Retry(
+    total=3,
+    backoff_factor=2,
+    status_forcelist=[429, 500, 502, 503, 504]
+)
+
+session.mount("https://", HTTPAdapter(max_retries=retry))
+
+response = session.get(
+    URL,
+    timeout=(15, 60),
+    headers={"User-Agent": "Mozilla/5.0"}
+)
+
+response.raise_for_status()
+
+html = response.text
 soup = BeautifulSoup(html, "html.parser")
 
 

@@ -22,7 +22,10 @@ session.mount("https://", HTTPAdapter(max_retries=retry))
 response = session.get(
     "https://r.jina.ai/" + URL,
     timeout=(15, 120),
-    headers={"X-Respond-With": "markdown"}
+    headers={
+        "X-Respond-With": "markdown",
+        "x-no-cache": "true"
+    }
 )
 
 response.raise_for_status()
